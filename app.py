@@ -29,5 +29,5 @@ if __name__ == '__main__':
         prediction_proba = modele.predict_proba(df_data)
         return jsonify({'prediction_proba': prediction_proba.tolist(), 'client_info': data})
 
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=8200)
 
