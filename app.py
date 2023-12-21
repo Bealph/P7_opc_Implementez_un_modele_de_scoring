@@ -2,6 +2,7 @@
 from flask import Flask, jsonify, request
 import pandas as pd
 import pickle
+import lightgbm
 
 # Suppression des warnings
 import warnings
@@ -21,13 +22,24 @@ with open(chemin_fichier_pickle, 'rb') as fichier:
 if __name__ == '__main__':
     # Flask setup
     app = Flask(__name__)
+    app.config['TESTING'] = True
 
-    @app.route('/prediction', methods=['POST'])
+    @app.route('/api/predict_proba/', methods=['POST'])
     def prediction():
+        # Get input data from the request
         data = request.get_json()
-        df_data = pd.DataFrame(data)
-        prediction_proba = modele.predict_proba(df_data)
-        return jsonify({'prediction_proba': prediction_proba.tolist(), 'client_info': data})
 
-    app.run(debug=True, port=8200)
+        df_data = pd.DataFrame(data)
+
+        # Make a prediction
+        prediction_proba = modele.predict_proba(df_data)
+
+        # Prepare the response
+        response = {'prediction_proba': prediction_proba[0]}
+        
+        return jsonify(response)
+      #  return jsonify({'prediction_proba': prediction_proba.tolist(), 'client_info': data})
+
+    if __name__=='__main__':
+        app.run(debug=True)#, port=8200)
 
