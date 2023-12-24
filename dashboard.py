@@ -17,15 +17,15 @@ client_data = df.loc[num_client[0]].to_dict()
 try:
     response = requests.post(url, json=client_data)
 
-    print(response)
-
     # Vérification de la réponse
     if response.status_code == 200:
+        # Parse the JSON response
         result = response.json()
+        prediction_proba = result['prediction_proba']
         print("Prédictions de probabilité pour le client:", result['client_info'])
-        print("Probabilités prédites:", result['prediction_proba'])
+        print("Probabilités prédites:", prediction_proba)
     else:
-        print("La requête a échoué avec le code:", response.status_code)
+        print("La requête a échoué avec le code:", response.status_code, response.text)
 
 except requests.exceptions.RequestException as e:
     print("Une erreur s'est produite lors de l'envoi de la requête:", e)
