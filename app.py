@@ -29,15 +29,20 @@ if __name__ == '__main__':
         # Get input data from the request
         data = request.get_json()
 
-        df_data = pd.DataFrame(data)
+        df_data = pd.DataFrame([data])
 
-        # Make a prediction
+# Make a prediction
         prediction_proba = modele.predict_proba(df_data)
 
+        #print(prediction_proba)
+
         # Prepare the response
-        response = {'prediction_proba': prediction_proba[0]}
+        response = {'proba': prediction_proba[0].tolist()}
+
+        print(response)
         
         return jsonify(response)
+        #return jsonify('hello')
       #  return jsonify({'prediction_proba': prediction_proba.tolist(), 'client_info': data})
 
     if __name__=='__main__':

@@ -1,38 +1,4 @@
-import pandas as pd
-import requests
-
-# URL de mon API Flask
-url = "http://127.0.0.1:5000"
-
-# Chargeons les données
-df = pd.read_csv("top_50_train.csv", encoding='utf-8')
-df.set_index('SK_ID_CURR', inplace=True)
-
-num_client = df.index.unique()
-
-# Sélectionnez un client (par exemple, prenons le premier client dans cet exemple)
-client_data = df.loc[num_client[0]].to_dict()
-
-# Envoi de la requête HTTP au serveur Flask
-try:
-    response = requests.post(url, json=client_data)
-
-    # Vérification de la réponse
-    if response.status_code == 200:
-        # Parse the JSON response
-        result = response.json()
-        prediction_proba = result['prediction_proba']
-        print("Prédictions de probabilité pour le client:", result['client_info'])
-        print("Probabilités prédites:", prediction_proba)
-    else:
-        print("La requête a échoué avec le code:", response.status_code, response.text)
-
-except requests.exceptions.RequestException as e:
-    print("Une erreur s'est produite lors de l'envoi de la requête:", e)
-
-
-#--------------------------------------------------------
-'''# Streamlit setup
+# Streamlit setup
 def streamlit_thread():
     def streamlit_code():
         st.title("application Streamlit")
@@ -43,4 +9,12 @@ def streamlit_thread():
 if __name__ == '__main__':
     sthread = Thread(target=streamlit_thread)
     sthread.start()
-    app.run(debug=True)'''
+    app.run(debug=True)
+
+
+'''
+redesign du dash (image, texte d'expli, en quoi va concerner le dash, 5 a 6 ligne,  un dropdown(menu : id des clients, qui va permettre qd on clique sur l'id, ça affiche sous forme de tableau (max: 10 variables les plus important)
+ les info du client), un bouton submit (qd on clique ça puisse envoyer les proba, les données à l'app, créer une fonction, en utilisant comme parametre les id client), et afficher dans le dashboard la liste des proba predict)
+
+
+'''
