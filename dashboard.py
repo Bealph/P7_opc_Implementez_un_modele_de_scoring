@@ -1,9 +1,6 @@
 import streamlit as st
 import pandas as pd
-
-menu_selector = st.sidebar.selectbox('Prediction probable sur le client',
-                                     ['proba'])
-col1 = st.columns
+import requests
 
 st.markdown(
     """
@@ -56,12 +53,13 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-#st.header('Tableau de bord en temps réel')
+# le header
 st.markdown(
     '<h1 class="header">Tableau de bord en temps réel</h1>',
     unsafe_allow_html=True
 )
 
+# costomisation texte d'explication de l'application
 st.markdown(
     '<p class="centered-text">Cette application vise à fournir un système de scoring avancé permettant\
         l\'accès aux informations essentielles des clients. Grâce à des modèles prédictifs, elle offre la possibilité\
@@ -75,3 +73,50 @@ st.markdown(
         <p>P7 OPC</p>\
         </div>', unsafe_allow_html=True
 )
+
+# Charger les données depuis votre fichier CSV
+df = pd.read_csv("top_50_train.csv", encoding='utf-8')
+
+# Créer le menu déroulant avec les IDs des clients dans la sidebar
+selected_client = st.sidebar.selectbox("Sélectionnez un client", df['SK_ID_CURR'])
+
+# Variables de contrôle pour afficher ou non le tableau des variables importantes
+show_variables = False
+
+# Bouton pour afficher les 10 variables importantes dans la sidebar
+if st.sidebar.button("Afficher les 10 variables importantes"):
+    show_variables = True
+    # Hide other elements in the main body
+    st.markdown(
+        '<style>.header, .centered-text, img {display: none;}</style>', 
+        unsafe_allow_html=True
+    )
+    # Obtenir les données du client sélectionné
+    client_data = df[df['SK_ID_CURR'] == selected_client].iloc[0].to_dict()
+
+    # Faire une requête à votre API Flask
+    url = "http://127.0.0.1:5000/api/predict_proba"
+    headers = {"Content-Type": "application/json"}
+
+    try:
+        response = requests.post(url, headers=headers, json=client_data)
+        if response.status_code == 200:
+            result = response.json()
+            # Assurez-vous que 'important_variables' correspond aux noms des 10 variables les plus importantes
+            important_variables = result['important_variables']
+            st.write(pd.DataFrame(important_variables))  # Afficher le tableau des 10 variables
+
+        else:
+            st.error(f"Échec de la requête : {response.status_code}")
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"Erreur lors de la requête : {e}")
+
+# Bouton pour fermer l'affichage du tableau des variables importantes
+if show_variables and st.sidebar.button("Fermer l'affichage"):
+    show_variables = False
+    # Réafficher les autres éléments dans la colonne body
+    st.markdown(
+        '<style>.header, .centered-text, img {display: block;}</style>', 
+        unsafe_allow_html=True
+    )
