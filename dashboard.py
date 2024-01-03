@@ -1,16 +1,23 @@
 import streamlit as st
 import pandas as pd
+from PIL import Image
+import json
 import requests
 
+#--------------------------------------------
+# Charger l'image
+image = Image.open('image_app.jpeg')
+
+# Afficher une colonne pour centrer l'image
+col1, col2, col3 = st.columns([1, 1, 1])
+with col2:
+    st.image(image, width=250, output_format="JPEG")
+
+# ----------------------------
+# le body
+    
 st.markdown(
     """
-<style>
-.centered {
-    display : flex;
-    justify-content : center;
-}
-</style>
-
 <style>
 .header {
     font-size : 24px;
@@ -48,12 +55,7 @@ st.markdown(
 unsafe_allow_html=True
 )
 
-st.markdown(
-    '<div class="centered"><img src="/img_test.PNG"></div>',
-    unsafe_allow_html=True
-)
 
-# le header
 st.markdown(
     '<h1 class="header">Tableau de bord en temps réel</h1>',
     unsafe_allow_html=True
@@ -74,32 +76,51 @@ st.markdown(
         </div>', unsafe_allow_html=True
 )
 
+# --------------------------------------------
+
 # Charger les données depuis votre fichier CSV
-df = pd.read_csv("top_50_train.csv", encoding='utf-8')
+client_data = pd.read_csv("top_50_train.csv", encoding='utf-8')
 
-# Créer le menu déroulant avec les IDs des clients dans la sidebar
-selected_client = st.sidebar.selectbox("Sélectionnez un client", df['SK_ID_CURR'])
+# Menu déroulant pour sélectionner un client
+selected_client = st.sidebar.selectbox("Sélectionnez un client", client_data['SK_ID_CURR'])
 
-# Variables de contrôle pour afficher ou non le tableau des variables importantes
+# Variables de contrôle pour afficher ou non les éléments
 show_variables = False
+show_predictions = False
+show_close_button = False
 
-# Bouton pour afficher les 10 variables importantes dans la sidebar
-if st.sidebar.button("Afficher les 10 variables importantes"):
-    show_variables = True
-    # Hide other elements in the main body
-    st.markdown(
-        '<style>.header, .centered-text, img {display: none;}</style>', 
-        unsafe_allow_html=True
-    )
-    # Obtenir les données du client sélectionné
-    client_data = df[df['SK_ID_CURR'] == selected_client].iloc[0].to_dict()
+# Si un client est sélectionné, afficher les boutons correspondants
+if selected_client:
+    # Afficher les boutons et récupérer leur état
+    show_variables = st.sidebar.button("Afficher les 10 variables importantes", key="variables_button")
+    show_predictions = st.sidebar.button("Affichage des prédictions probables", key="predictions_button")
+
+    # Gestion de l'affichage des boutons
+    if show_variables:
+        show_close_button = True
+
+    if show_predictions:
+        show_close_button = True
+
+
+
+# Affichage des éléments dans la colonne principale en fonction des boutons cliqués
+if show_variables:
+    # Cacher les autres éléments dans la colonne principale
+    st.markdown('<style>.header, .centered-text, img {display: none;}</style>', unsafe_allow_html=True)
+     # Obtenir les données du client sélectionné
+    # Au lieu de client_data = df[df['SK_ID_CURR'] == selected_client].iloc[0].to_dict()
+    client_data_dict = client_data[client_data['SK_ID_CURR'] == selected_client].iloc[0].to_dict()
+
+    # Convertir le dictionnaire en JSON
+    client_data_json = json.dumps(client_data_dict)
 
     # Faire une requête à votre API Flask
     url = "http://127.0.0.1:5000/api/predict_proba"
     headers = {"Content-Type": "application/json"}
 
     try:
-        response = requests.post(url, headers=headers, json=client_data)
+        response = requests.post(url, headers=headers, json=client_data_json)
         if response.status_code == 200:
             result = response.json()
             # Assurez-vous que 'important_variables' correspond aux noms des 10 variables les plus importantes
@@ -112,11 +133,43 @@ if st.sidebar.button("Afficher les 10 variables importantes"):
     except requests.exceptions.RequestException as e:
         st.error(f"Erreur lors de la requête : {e}")
 
-# Bouton pour fermer l'affichage du tableau des variables importantes
-if show_variables and st.sidebar.button("Fermer l'affichage"):
-    show_variables = False
-    # Réafficher les autres éléments dans la colonne body
-    st.markdown(
-        '<style>.header, .centered-text, img {display: block;}</style>', 
-        unsafe_allow_html=True
-    )
+#-------------                --------------------
+
+if show_predictions:
+    # Cacher les autres éléments dans la colonne principale
+    st.markdown('<style>.header, .centered-text, img {display: none;}</style>', unsafe_allow_html=True)
+
+    #
+    client_data_dict = client_data[client_data['SK_ID_CURR'] == selected_client].iloc[0].to_dict()
+
+    # Convertir le dictionnaire en JSON
+    client_data_json = json.dumps(client_data_dict)
+
+    # Faire une requête à ton API Flask pour récupérer les prédictions
+    url = "http://127.0.0.1:5000/api/predict_proba"
+    headers = {"Content-Type": "application/json"}
+
+    try:
+        st.write(f"Data sent to Flask API: {client_data}")  # Affiche les données envoyées à l'API Flask
+        response = requests.post(url, headers=headers, json=client_data_json)
+        st.write(f"API Response: {response}")  # Affiche la réponse de l'API
+        st.write(f"API Response JSON: {response.json()}")  # Affiche le JSON de la réponse de l'API
+
+        if response.status_code == 200:
+            result = response.json()
+            prediction_proba = result['proba']
+            st.write(f"Prédictions probables : {prediction_proba}")  # Afficher les prédictions probables
+
+        else:
+            st.error(f"Échec de la requête : {response.status_code}")
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"Erreur lors de la requête : {e}")
+
+
+# Afficher le bouton "Fermer l'affichage" s'il y a quelque chose à fermer
+if show_close_button:
+    if st.sidebar.button("Fermer l'affichage"):
+        # Réinitialisation de l'affichage à l'étape initiale
+        st.sidebar.markdown('<style>#variables_button, #predictions_button {display: block;}</style>', unsafe_allow_html=True)
+        st.markdown('<style>.header, .centered-text, img {display: block;}</style>', unsafe_allow_html=True)
