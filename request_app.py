@@ -26,6 +26,8 @@ client_data = df.iloc[0].to_dict()
 
 # Envoi de la requête HTTP au serveur Flask
 
+# --------------- 10 vars les plus importants --------------
+
 try:
     response = requests.post("http://127.0.0.1:5000/api/client_data", headers=headers, json=client_data)
     if response.status_code == 200:
@@ -41,7 +43,7 @@ except requests.exceptions.RequestException as e:
         print("Une erreur s'est produite lors de l'envoi de la requête:", e)
 
 
-
+# ---------------- Predict proba -----------------------------
 
 try:
     response = requests.post("http://127.0.0.1:5000/api/predict_proba", headers=headers, json=client_data)
