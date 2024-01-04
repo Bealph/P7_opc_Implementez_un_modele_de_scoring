@@ -22,43 +22,27 @@ headers = {
 
 
 # Sélectionnez un client (par exemple, prenons le premier client dans cet exemple)
-client_data = df.iloc[0].to_dict()
+
 
 # Envoi de la requête HTTP au serveur Flask
 
-# --------------- 10 vars les plus importants --------------
+def get_infos_client(selected_client):
+    client_data = selected_client.to_dict()
 
-try:
-    response = requests.post("http://127.0.0.1:5000/api/client_data", headers=headers, json=client_data)
-    if response.status_code == 200:
-        result = response.json()
-        
-        important_variables = result['important_variables']
-        print("Les 10 variables les plus importantes:", important_variables)
+    try:
+        response = requests.post("http://127.0.0.1:5000/api/infos_client", headers=headers, json=client_data)
 
-    else:
-        print("La requête a échoué avec le code:", response.status_code, response.text)
+        # Vérification de la réponse
+        if response.status_code == 200:
+            # Parse the JSON response
+            result = response.json()
+            prediction_proba = result['proba']
+            feature_importance = result['vars']
 
-except requests.exceptions.RequestException as e:
+            return prediction_proba, feature_importance
+            
+        else:
+            print("La requête a échoué avec le code:", response.status_code, response.text)
+
+    except requests.exceptions.RequestException as e:
         print("Une erreur s'est produite lors de l'envoi de la requête:", e)
-
-
-# ---------------- Predict proba -----------------------------
-
-try:
-    response = requests.post("http://127.0.0.1:5000/api/predict_proba", headers=headers, json=client_data)
-
-    # Vérification de la réponse
-    if response.status_code == 200:
-        # Parse the JSON response
-        result = response.json()
-        prediction_proba = result['proba']
-        #print("Prédictions de probabilité pour le client:", result['client_info'])
-        print("Probabilités prédites:", prediction_proba)
-    else:
-        print("La requête a échoué avec le code:", response.status_code, response.text)
-
-except requests.exceptions.RequestException as e:
-    print("Une erreur s'est produite lors de l'envoi de la requête:", e)
-
-
