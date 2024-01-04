@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 from PIL import Image
-
-
 import request_app as ra
 
 #---------------------------------
@@ -110,17 +108,20 @@ if selected_client:
 
 # Affichage des éléments dans la colonne principale en fonction des boutons cliqués
 if show_variables:
+
     # Cacher les autres éléments dans la colonne principale
     st.markdown('<style>.header, .centered-text, img {display: none;}</style>', unsafe_allow_html=True)
 
-    client_data = client_data[client_data['SK_ID_CURR'] == selected_client]
-    print(client_data)
+    client_data = client_data[client_data['SK_ID_CURR'] == selected_client].iloc[0].drop(labels='SK_ID_CURR')
 
-    #prediction_proba, feature_importance = ra.get_infos_client(client_data)
+    prediction_proba, feature_names, feature_importance = ra.get_infos_client(client_data)
 
-    #top_10_indices = sorted(range(len(feature_importance)), key=lambda i: feature_importance[i], reverse=True)[:10]
+    top_10_indices = sorted(range(len(feature_importance)), key=lambda i: feature_importance[i], reverse=True)[:10]
+    top_10_features = [(feature_names[i], feature_importance[i]) for i in top_10_indices]
+    top_10_df = pd.DataFrame(top_10_features, columns=['Variables', 'Importances'])
 
-    #st.write(top_10_indices)
+    st.write("Les 10 variables les plus importantes :")
+    st.table(top_10_df)
 
 
 
@@ -139,7 +140,7 @@ if show_predictions:
     #
     client_data = client_data[client_data['SK_ID_CURR'] == selected_client].iloc[0].drop(labels='SK_ID_CURR')
 
-    prediction_proba, feature_importance = ra.get_infos_client(client_data)
+    prediction_proba, feature_names, feature_importance = ra.get_infos_client(client_data)
     st.write(prediction_proba)
 
     # afficher un decision plot, ou un donut plot, un chartplot

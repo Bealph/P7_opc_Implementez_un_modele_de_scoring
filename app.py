@@ -2,11 +2,8 @@ from flask import Flask, jsonify, request
 import pandas as pd
 import pickle
 
-# Suppression des warnings
-import warnings
-warnings.filterwarnings('ignore')
-
-# --------------------------------------
+app = Flask(__name__)
+app.config['TESTING'] = True
 
 # Chemin vers le fichier pickle contenant le modèle
 chemin_fichier_pickle = "mon_best_modele_entraine_LightGBM.pkl"
@@ -15,31 +12,31 @@ with open(chemin_fichier_pickle, 'rb') as fichier:
     print("utilisation du meilleur modele : lightGBM")
     modele = pickle.load(fichier)
 
-# ------------------------------
-
 # Routes Flask
-app = Flask(__name__)
-app.config['TESTING'] = True
-
 @app.route('/api/infos_client/', methods=['POST'])
 def data_client():
-    # Get input data from the request
+    # Obtenir les données transmises par la requête
     data = request.get_json()
 
     df_data = pd.DataFrame([data])
 
-     # Make a prediction
+    # Faire la prédiction probable à partir du modele entrainé
     prediction_proba = modele.predict_proba(df_data)
+
+    # Obtenir les noms des features à partir des colonnes du DataFrame
+    feature_names = df_data.columns.tolist()
     
-    # Get feature importances from the trained model
+    # Obtenir les feature importances à partir du modele entrainé
     feature_importance = modele.feature_importances_.tolist()
 
-    # Prepare the response
-    response = {'proba': prediction_proba[0].tolist(), 'vars': feature_importance}
-
+    # Préparer la réponse de la requête en incluant les nom des feature et leurs importances
+    response = {
+        'proba': prediction_proba[0].tolist(),
+        'feature_names': feature_names,
+        'feature_importance': feature_importance
+    }
 
     return jsonify(response)
-
 
 if __name__ == '__main__':
     # Lancement de l'application Flask
