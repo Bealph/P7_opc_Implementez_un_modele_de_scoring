@@ -2,10 +2,13 @@ import streamlit as st
 import pandas as pd
 from PIL import Image
 import request_app as ra
+import pickle
 
 #---------------------------------
 # pour les graphique shap, les importer les shapvalues(en les important au format pickle), pour pouvoir faire facilementle graphique
-
+with open('shap_values.pkl', 'rb') as f:
+    print("utilisation des shap_values : SHAP_VALUES")
+    shap_values = pickle.load(f)
 #--------------------------------------------
 # Charger l'image
 image = Image.open('image_app.jpeg')
