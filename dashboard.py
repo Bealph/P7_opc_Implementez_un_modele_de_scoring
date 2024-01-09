@@ -124,12 +124,13 @@ if selected_client:
 # Affichage des éléments dans la colonne principale en fonction des boutons cliqués
 if show_variables:
 
+
     # Cacher les autres éléments dans la colonne principale
     st.markdown('<style>.header, .centered-text, img {display: none;}</style>', unsafe_allow_html=True)
 
-    client_data = client_data[client_data['SK_ID_CURR'] == selected_client].iloc[0].drop(labels='SK_ID_CURR')
+    data_by_client = client_data[client_data['SK_ID_CURR'] == selected_client].iloc[0].drop(labels='SK_ID_CURR')
 
-    prediction_proba, feature_names, feature_importance = ra.get_infos_client(client_data)
+    prediction_proba, feature_names, feature_importance = ra.get_infos_client(data_by_client)
 
     top_10_indices = sorted(range(len(feature_importance)), key=lambda i: feature_importance[i], reverse=True)[:10]
     top_10_features = [(feature_names[i], feature_importance[i]) for i in top_10_indices]
@@ -159,17 +160,33 @@ if show_variables:
     ####################### Boxplot ###########################     # Placer les points rouges correspondant aux valeurs du client
 
     # Sélectionner les noms des 4 variables les plus importantes
-    top_feature_names = feature_names[:4]
+    top_feature_names = feature_names[:4]  # des variables continues à prendre
+
+    
 
     # Créer un DataFrame avec les 4 variables importantes pour le client sélectionné
     client_top_features = pd.DataFrame({name: [client_data[name]] for name in top_feature_names})
 
+    client_top_features_by_client = pd.DataFrame({name: [data_by_client[name]] for name in top_feature_names})
+
+
     # Transformer le DataFrame pour qu'il soit en format long (nécessaire pour Altair)
     client_top_features = client_top_features.T.reset_index()
+
+    client_top_features_by_client = client_top_features_by_client.T.reset_index()
+
     client_top_features.columns = ['variable', 'valeur']
 
+    client_top_features_by_client.columns = ['variable', 'valeur']
+
+    print(client_data.head())
+
+    print( )
+
+    
+
     # Créer le boxplot avec Altair
-    boxplot = alt.Chart(client_top_features).mark_boxplot().encode(
+    boxplot = alt.Chart(client_data).mark_boxplot().encode(
         x='variable:N',
         y='valeur:Q'
     ).properties(
@@ -177,11 +194,11 @@ if show_variables:
     )
 
     # Créer un DataFrame séparé pour les points du client
-    client_points = client_top_features.copy()
+    client_points = client_top_features_by_client.copy()
     client_points['type'] = 'client'
 
-    # Afficher le boxplot avec les points du client
-    chart = alt.Chart(pd.concat([client_top_features, client_points])).mark_point(
+   # Afficher le boxplot avec les points du client
+    chart = alt.Chart(pd.concat([client_top_features_by_client, client_points])).mark_point(
         color='red',  # Couleur des points
         size=100,  # Taille des points
         filled=True
@@ -242,6 +259,10 @@ if show_predictions:
     fig.update_layout(title='Prédictions')
     
     st.plotly_chart(fig)
+
+
+
+    # a placer dans le bouton variables
 
     #####################  Decision Plot  #####################
 
