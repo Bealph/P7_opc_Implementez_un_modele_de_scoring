@@ -21,6 +21,11 @@ import plotly.graph_objects as go
 with open('shap_values.pkl', 'rb') as shap_file:
     shap_values = pickle.load(shap_file)
 
+#---------------------------------
+# import des excepted_value
+with open('expected_value.pkl', 'rb') as excepted_value_file:
+    excepted_value = pickle.load(excepted_value_file)
+
 #--------------------------------------------
 # Charger l'image
 image = Image.open('image_app.jpeg')
@@ -50,24 +55,6 @@ st.markdown(
 }
 </style>
 
-<style>
-.footer {
-    position : fixed;
-    bottom : 0;
-    left : 0;
-    width : 100%;
-    background-color : white;
-    text-align : justify;
-    text-align-last : center;
-    color : blue;
-    font-size : 8px;
-    
-    p {
-        margin-bottom: 0px;
-    }
-}
-</style>
-
 """,
 unsafe_allow_html=True
 )
@@ -87,16 +74,13 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.markdown(
-    '<div class="footer"> <p>2023 DIALLO Alpha</p>\
-        <p>P7 OPC</p>\
-        </div>', unsafe_allow_html=True
-)
-
 # --------------------------------------------
 
 # Charger les données depuis votre fichier CSV
 client_data = pd.read_csv("top_50_train.csv", encoding='utf-8')
+descrip_columns = pd.read_csv('HomeCredit_columns_description.csv', encoding='ISO-8859-1')
+
+lexique = descrip_columns[['Row', 'Description']]
 
 # Menu déroulant pour sélectionner un client
 selected_client = st.sidebar.selectbox("Sélectionnez un client", client_data['SK_ID_CURR'])
@@ -124,7 +108,6 @@ if selected_client:
 # Affichage des éléments dans la colonne principale en fonction des boutons cliqués
 if show_variables:
 
-
     # Cacher les autres éléments dans la colonne principale
     st.markdown('<style>.header, .centered-text, img {display: none;}</style>', unsafe_allow_html=True)
 
@@ -132,12 +115,21 @@ if show_variables:
 
     prediction_proba, feature_names, feature_importance = ra.get_infos_client(data_by_client)
 
-    top_10_indices = sorted(range(len(feature_importance)), key=lambda i: feature_importance[i], reverse=True)[:10]
-    top_10_features = [(feature_names[i], feature_importance[i]) for i in top_10_indices]
-    top_10_df = pd.DataFrame(top_10_features, columns=['Variables', 'Importances'])
+    # Convertir les noms de variables feature_names en majuscules
+    feature_names_upper = [name.upper() for name in feature_names]
 
+    top_10_indices = sorted(range(len(feature_importance)), key=lambda i: feature_importance[i], reverse=True)[:11]
+    top_10_features = [(feature_names_upper[i], feature_importance[i]) for i in top_10_indices]
+
+    # Créer un DataFrame avec les 10 variables les plus importantes
+    top_10_df = pd.DataFrame(top_10_features, columns=['Row', 'Importance'])
+
+    # Fusionner avec le lexique pour obtenir les descriptions correspondantes
+    top_10_lexique = pd.merge(top_10_df, lexique, on='Row')
+
+    # Afficher les 10 variables les plus importantes et leurs descriptions
     st.write("Les 10 variables les plus importantes :")
-    st.table(top_10_df)
+    st.table(top_10_lexique[['Row', 'Description']].rename(columns={'Row': 'Variables', 'Description': 'Lexique'}))
 
     st.write('------------------------------')
 
@@ -145,14 +137,17 @@ if show_variables:
 
     st.write("Observations des 10 variables les plus importantes :")
 
+    # Trier le DataFrame par Importances de manière décroissante
+    top_10_df = top_10_df.sort_values(by='Importance', ascending=False)
+
     bar_plot = alt.Chart(top_10_df).mark_bar().encode(
-        x=alt.X('Variables', title='Variables'),
-        y=alt.Y('Importances', title='Importance')
+        x=alt.X('Row', title='Variables'),
+        y=alt.Y('Importance', title='Importance')
     ).properties(
         width=500,
         height=500
     )
-    
+
     st.altair_chart(bar_plot)
 
     st.write('------------------------------')
@@ -179,9 +174,31 @@ if show_variables:
 
     client_top_features_by_client.columns = ['variable', 'valeur']
 
-    print(client_data.head())
+    #print(client_data.head())
 
-    print( )
+    
+
+    st.write('------------------------------')
+
+    #####################  Decision Plot  #####################
+
+    # Créer un graphique de décision avec plotly
+    fig = go.Figure(go.Bar(x=feature_names, y=feature_importance, 
+                               hoverinfo='x+y', marker=dict(color='skyblue')))
+    fig.update_layout(title='Importance des caractéristiques dans la prédiction',
+                          xaxis_title='Caractéristiques', yaxis_title='Importance')
+        
+    st.plotly_chart(fig)
+
+    ###################### chartplot #####################
+    # Créer un graphique chartplot
+    # Créer un graphique chartplot avec Plotly
+    fig_chartplot = go.Figure(go.Bar(y=feature_names, x=feature_importance, orientation='h', marker_color='skyblue'))
+    fig_chartplot.update_layout(title='Importance des caractéristiques pour la prédiction',
+                                xaxis_title='Importance', yaxis_title='Caractéristiques')
+
+    # Afficher le graphique dans Streamlit
+    st.plotly_chart(fig_chartplot)
 
     
 
@@ -247,42 +264,39 @@ if show_predictions:
 
     # Afficher d'autres informations sur le client
     prediction_proba, feature_names, feature_importance = ra.get_infos_client(client_data)
-    st.write(prediction_proba)  
+    st.write("Les informations ci-dessous représentent la probabilité de prédiction associée au client sélectionné. Cette probabilité est calculée en utilisant" 
+             " des caractéristiques spécifiques associées au profil du client. Plus la probabilité est élevée, plus le modèle considère que le client peut présenter "
+               "certains comportements ou caractéristiques prédéfinis.")
+    #st.write(prediction_proba)  
+
+    # Classes correspondant aux prêts remboursés et non remboursés
+    classes = ['Prêt Remboursé', 'Prêt Non Remboursé']
+
+    # Valeurs de probabilité associées à chaque classe
+    values = [prediction_proba[0], prediction_proba[1]]
+
+    # Affichage des probabilités sous forme de tableau
+    st.write("Probabilité de Remboursement et Non Remboursement :")
+    table_data = {'Classes predictes': classes, 'Probabilités de remboursement': values}
+    st.table(table_data)
+
+    st.write('------------------------------')
 
         ################################ Donut Chart   ##############################
 
     # Créer un graphique Donut Chart avec Plotly
-    labels = ['Class 0', 'Class 1']  # Remplacez par vos classes prédites
-    values = [prediction_proba[0], prediction_proba[1]]  # Remplacez par vos probabilités de classes
+    labels = ['Prêt Remboursé', 'Prêt Non Remboursé']
+    values = [prediction_proba[0], prediction_proba[1]] 
 
     fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.4)])
-    fig.update_layout(title='Prédictions')
+    #fig.update_layout(title='Prédictions')
+
+    st.write("Le graphique ci-dessous permet de visualiser l'accord de crédit pour des personnes avec peu ou pas d'historique de prêt. En un coup d'œil, il est possible"
+             " d'évaluer visuellement la probabilité d'approbation ou de refus d'octroi de crédits à un client.")
     
     st.plotly_chart(fig)
 
-
-
-    # a placer dans le bouton variables
-
-    #####################  Decision Plot  #####################
-
-    # Créer un graphique de décision avec plotly
-    fig = go.Figure(go.Bar(x=feature_names, y=feature_importance, 
-                               hoverinfo='x+y', marker=dict(color='skyblue')))
-    fig.update_layout(title='Importance des caractéristiques dans la prédiction',
-                          xaxis_title='Caractéristiques', yaxis_title='Importance')
-        
-    st.plotly_chart(fig)
-
-    ###################### chartplot #####################
-    # Créer un graphique chartplot
-    # Créer un graphique chartplot avec Plotly
-    fig_chartplot = go.Figure(go.Bar(y=feature_names, x=feature_importance, orientation='h', marker_color='skyblue'))
-    fig_chartplot.update_layout(title='Importance des caractéristiques pour la prédiction',
-                                xaxis_title='Importance', yaxis_title='Caractéristiques')
-
-    # Afficher le graphique dans Streamlit
-    st.plotly_chart(fig_chartplot)
+    st.write('------------------------------')
 
 
 
