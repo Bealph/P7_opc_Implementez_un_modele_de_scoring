@@ -11,7 +11,7 @@ import pickle
 import shap
 
 import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
 
 import plotly.graph_objects as go
 
@@ -135,117 +135,134 @@ if show_variables:
 
     ####################### Histrogramme ###########################
 
-    st.write("Observations des 10 variables les plus importantes :")
+    st.write("Ce graphique vise à illustrer visuellement l'évaluation des demandes de crédit pour des individus sans ou avec peu d'historique de prêt, en mettant en lumière les 10 variables numériques les plus influentes."
+              " Les barres plus hautes indiquent des variables plus déterminantes, fournissant ainsi une vue d'ensemble rapide des facteurs clés pris en compte dans la décision d'accorder un crédit.")
+    st.write(" ")
 
-    # Trier le DataFrame par Importances de manière décroissante
-    top_10_df = top_10_df.sort_values(by='Importance', ascending=False)
-
+    # Créer un graphique à barres avec Altair
     bar_plot = alt.Chart(top_10_df).mark_bar().encode(
-        x=alt.X('Row', title='Variables'),
+        x=alt.X('Row', title='Variables', sort='-y'),  # Tri décroissant
         y=alt.Y('Importance', title='Importance')
     ).properties(
         width=500,
-        height=500
+        height=400
     )
 
+    # Afficher le graphique à barres
     st.altair_chart(bar_plot)
+
 
     st.write('------------------------------')
 
-    ####################### Boxplot ###########################     # Placer les points rouges correspondant aux valeurs du client
+    ####################### Boxplot ###########################     
 
-    # Sélectionner les noms des 4 variables les plus importantes
-    top_feature_names = feature_names[:4]  # des variables continues à prendre
+    st.write("Ce graphique combiné facilite une évaluation rapide et efficace de la situation des demandeurs de crédit"
+             " Les points représentent les valeurs des variables numériques pour ce client, offrant une comparaison visuelle immédiate avec la distribution générale des données")
+    
+    st.write(" ")
+
+    # Créer un DataFrame avec les noms de variables et leurs importances 
+    feature_info = pd.DataFrame({
+        'Feature': feature_names,
+        'Importance': feature_importance
+    })
+
+    # Trier le DataFrame par l'importance dans l'ordre décroissant
+    feature_info = feature_info.sort_values(by='Importance', ascending=False)
+
+    # Sélectionner les 10 premières variables
+    top_10_features = feature_info.head(10)
+
+    # Afficher le top 10 des variables numériques dans client_data
+    top_10_features_names = top_10_features['Feature'].tolist()
+    top_10_client_data = client_data[top_10_features_names]
+
+    # Filtrer les features du client pour inclure uniquement celles présentes dans top_10_features_names
+    filtered_client_data = data_by_client[data_by_client.index.isin(top_10_features_names)]
+
+    # Créer un DataFrame séparé pour les points du client
+    client_points = pd.DataFrame({
+        'Feature': filtered_client_data.index,
+        'Value': filtered_client_data.values,
+        'Type': [f"Client : {selected_client}"] * len(filtered_client_data)
+    })
 
     
-
-    # Créer un DataFrame avec les 4 variables importantes pour le client sélectionné
-    client_top_features = pd.DataFrame({name: [client_data[name]] for name in top_feature_names})
-
-    client_top_features_by_client = pd.DataFrame({name: [data_by_client[name]] for name in top_feature_names})
-
-
-    # Transformer le DataFrame pour qu'il soit en format long (nécessaire pour Altair)
-    client_top_features = client_top_features.T.reset_index()
-
-    client_top_features_by_client = client_top_features_by_client.T.reset_index()
-
-    client_top_features.columns = ['variable', 'valeur']
-
-    client_top_features_by_client.columns = ['variable', 'valeur']
-
-    #print(client_data.head())
+    boxplot = alt.Chart(top_10_client_data.melt()).mark_boxplot().encode(
+        x='variable:O',
+        y='value:Q'
+    ).properties(
+        width=600,
+        height=400,
+    )
 
     
+    boxplot_by_client = alt.Chart(pd.concat([top_10_client_data, client_points])).mark_point(
+        color='red',  # Couleur des points
+        size=100,  # Taille des points
+        filled=True
+    ).encode(
+        x='Feature:N',
+        y='Value:Q',
+        shape='Type:N'
+    ).properties(
+        width=600,
+        height=400,
+    )
+
+
+    # Afficher les points rouges et le boxplot dans le même graphique
+    combined_chart = boxplot + boxplot_by_client
+    st.altair_chart(combined_chart, use_container_width=True)
+
+
+    # Afficher la ligne du DataFrame du client dont l'Id est sélectionné
+    st.write("Données du client sélectionné:")
+
+    df_filtered_client_data = pd.DataFrame({'Value': filtered_client_data.values}, index=filtered_client_data.index)
+    df_filtered_client_data.index.name = 'Feature'
+
+    st.dataframe(df_filtered_client_data.reset_index().transpose())
+
+    st.write('------------------------------')
+
+    ###################### chartplot #####################
+    
+    st.write("À travers cette représentation graphique, nous sommes en mesure de présenter de manière claire et concise les facteurs qui ont un impact significatif sur la décision d'octroi de crédit."
+             " Les caractéristiques, telles que définies dans le graphique, sont des éléments clés pris en compte dans l'évaluation du profil financier des demandeurs."
+             " La position et la longueur de chaque barre reflètent respectivement l'importance de chaque caractéristique et son impact sur la décision d'accorder un crédit.")
+
+    #st.write(" ")
+
+    fig_chartplot = go.Figure(go.Bar(y=feature_names, x=feature_importance, orientation='h', marker_color='skyblue'))
+    fig_chartplot.update_layout(xaxis_title='Importance', yaxis_title='Caractéristiques')
+
+    # Afficher le graphique dans Streamlit
+    st.plotly_chart(fig_chartplot)
 
     st.write('------------------------------')
 
     #####################  Decision Plot  #####################
 
+    st.write("Ce graphique de Decision illustre l'importance relative de chaque caractéristique dans l'octroi du crédit."
+             " À travers ce graphique interactif, chaque barre représente une caractéristique spécifique, tandis que la"
+              " hauteur de la barre indique l'importance de cette caractéristique dans la décision d'octroi de crédit. "
+              " Les caractéristiques qui contribuent le plus à l'accord de crédit sont visualisées par des barres plus hautes, tandis que celles ayant une influence moindre sont représentées par des barres plus courtes.")
+
+    #st.write(" ")
+
     # Créer un graphique de décision avec plotly
     fig = go.Figure(go.Bar(x=feature_names, y=feature_importance, 
                                hoverinfo='x+y', marker=dict(color='skyblue')))
-    fig.update_layout(title='Importance des caractéristiques dans la prédiction',
-                          xaxis_title='Caractéristiques', yaxis_title='Importance')
+    fig.update_layout(xaxis_title='Caractéristiques', yaxis_title='Importance')
         
     st.plotly_chart(fig)
 
-    ###################### chartplot #####################
-    # Créer un graphique chartplot
-    # Créer un graphique chartplot avec Plotly
-    fig_chartplot = go.Figure(go.Bar(y=feature_names, x=feature_importance, orientation='h', marker_color='skyblue'))
-    fig_chartplot.update_layout(title='Importance des caractéristiques pour la prédiction',
-                                xaxis_title='Importance', yaxis_title='Caractéristiques')
-
-    # Afficher le graphique dans Streamlit
-    st.plotly_chart(fig_chartplot)
-
-    
-
-    # Créer le boxplot avec Altair
-    boxplot = alt.Chart(client_data).mark_boxplot().encode(
-        x='variable:N',
-        y='valeur:Q'
-    ).properties(
-        title='Boxplot des variables importantes pour le client'
-    )
-
-    # Créer un DataFrame séparé pour les points du client
-    client_points = client_top_features_by_client.copy()
-    client_points['type'] = 'client'
-
-   # Afficher le boxplot avec les points du client
-    chart = alt.Chart(pd.concat([client_top_features_by_client, client_points])).mark_point(
-        color='red',  # Couleur des points
-        size=100,  # Taille des points
-        filled=True
-    ).encode(
-        x='variable:N',
-        y='value:Q',
-        shape='type:N'
-    )
-
-    # Afficher le boxplot
-    st.altair_chart(boxplot, use_container_width=True)
-
-
-    
-    
-    
-    
-
-    
-
-
-
-
-# Afficher le 4 top des variable un boxplot et un point rouge pour voir où se trouve le client, un histogramme
-
-
-
-
 #-------------                --------------------
 st.set_option('deprecation.showPyplotGlobalUse', False)  # Désactiver l'avertissement de dépréciation
+
+
+##################################################################################################################################################################################################################################
 
 
 if show_predictions:
@@ -266,8 +283,10 @@ if show_predictions:
     prediction_proba, feature_names, feature_importance = ra.get_infos_client(client_data)
     st.write("Les informations ci-dessous représentent la probabilité de prédiction associée au client sélectionné. Cette probabilité est calculée en utilisant" 
              " des caractéristiques spécifiques associées au profil du client. Plus la probabilité est élevée, plus le modèle considère que le client peut présenter "
-               "certains comportements ou caractéristiques prédéfinis.")
-    #st.write(prediction_proba)  
+               "certains comportements ou caractéristiques prédéfinis.") 
+    
+    # Assurez-vous que prediction_proba est une liste ou un tableau NumPy de valeurs numériques
+    prediction_proba = np.array(prediction_proba, dtype=float)
 
     # Classes correspondant aux prêts remboursés et non remboursés
     classes = ['Prêt Remboursé', 'Prêt Non Remboursé']
@@ -285,11 +304,8 @@ if show_predictions:
         ################################ Donut Chart   ##############################
 
     # Créer un graphique Donut Chart avec Plotly
-    labels = ['Prêt Remboursé', 'Prêt Non Remboursé']
-    values = [prediction_proba[0], prediction_proba[1]] 
 
-    fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.4)])
-    #fig.update_layout(title='Prédictions')
+    fig = go.Figure(data=[go.Pie(labels=classes, values=values, hole=.4)])
 
     st.write("Le graphique ci-dessous permet de visualiser l'accord de crédit pour des personnes avec peu ou pas d'historique de prêt. En un coup d'œil, il est possible"
              " d'évaluer visuellement la probabilité d'approbation ou de refus d'octroi de crédits à un client.")
@@ -297,6 +313,19 @@ if show_predictions:
     st.plotly_chart(fig)
 
     st.write('------------------------------')
+
+    ######################## ChartPlot ##############################
+    # Graphique ChartPlot
+    fig_chartplot = px.bar(x=classes, y=values, labels={'x': 'Classe', 'y': 'Probabilité'},
+                        title='ChartPlot des probabilités par classe predicte')
+    st.plotly_chart(fig_chartplot)
+
+    st.write('------------------------------')
+
+    ######################## Decision Plot ##############################
+    # Graphique Decision Plot
+    fig_decision_plot = px.pie(values=values, names=classes, title='Decision Plot des probabilités par classe predicte')
+    st.plotly_chart(fig_decision_plot)
 
 
 
