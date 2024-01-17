@@ -324,33 +324,28 @@ if show_predictions:
 
     ######################## Decision Plot ##############################
     # Graphique Decision Plot
-    fig_decision_plot = px.pie(values=values, names=classes, title='Decision Plot des probabilités par classe predicte')
-    st.plotly_chart(fig_decision_plot)
+    
+    #utiliser les données excepted_value et suivre la meme demarche que celle suivi pour shap
 
 
 
     ######################### SHAP ###########################
 
-    # Obtenez les valeurs SHAP pour le client sélectionné
-    shap_values_client = shap_values[shap_values.index == client_row.name]
+    # Obtenir les valeurs SHAP pour le client sélectionné
+    shap_values_client = shap_values[client_data == selected_client] # en fonction des lignes en utilisant les index | numpy array | recuperer le numero de ligne dans le numpy array | utiliser une boucle 
 
-    # Tracer le graphique SHAP
-    shap_df = pd.DataFrame(shap_values_client, columns=client_data_filtered.index)
+    # Afficher les valeurs SHAP avec Altair
+    st.subheader("Valeurs SHAP pour le client sélectionné")
+    shap.summary_plot(shap_values_client, features=data_by_client, feature_names=feature_names, show=False)
+    shap_plot = st.altair_chart(
+        alt.Chart.shap_summary_plot(
+            shap_values_client, feature_names=feature_names).interactive(),
+              use_container_width=True)
 
-    shap_df = shap_df.T
-    shap_df['feature'] = shap_df.index.astype(str)  # Conversion des noms de colonnes en chaînes
-    shap_df['shap_value'] = shap_df.iloc[:, 0]  # Sélectionner les valeurs SHAP (ou ajustez l'index approprié)
-    shap_df = shap_df.reset_index(drop=True)
 
-    chart = alt.Chart(shap_df).mark_bar().encode(
-        x='shap_value',
-        y=alt.Y('feature', sort='-x')
-    ).properties(
-        width=500,
-        height=500
-    )
 
-    st.altair_chart(chart, use_container_width=True)
+
+    
 
 
    
