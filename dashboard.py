@@ -274,13 +274,13 @@ if show_predictions:
     client_data_filtered = client_row.drop(labels='SK_ID_CURR')
 
     # Filtrer les données pour obtenir les infos du client sélectionné
-    client_data = client_data[client_data['SK_ID_CURR'] == selected_client].iloc[0].drop(labels='SK_ID_CURR')
+    client_data_without_label = client_data[client_data['SK_ID_CURR'] == selected_client].iloc[0].drop(labels='SK_ID_CURR')
 
     ######################### Print PREDICTION ###########################
 
 
     # Afficher d'autres informations sur le client
-    prediction_proba, feature_names, feature_importance = ra.get_infos_client(client_data)
+    prediction_proba, feature_names, feature_importance = ra.get_infos_client(client_data_without_label)
     st.write("Les informations ci-dessous représentent la probabilité de prédiction associée au client sélectionné. Cette probabilité est calculée en utilisant" 
              " des caractéristiques spécifiques associées au profil du client. Plus la probabilité est élevée, plus le modèle considère que le client peut présenter "
                "certains comportements ou caractéristiques prédéfinis.") 
@@ -331,16 +331,55 @@ if show_predictions:
 
     ######################### SHAP ###########################
 
-    # Obtenir les valeurs SHAP pour le client sélectionné
-    shap_values_client = shap_values[client_data == selected_client] # en fonction des lignes en utilisant les index | numpy array | recuperer le numero de ligne dans le numpy array | utiliser une boucle 
+    # Récupérer le numéro de ligne dans le numpy array
+    #client_index = client_data[client_data['SK_ID_CURR'] == selected_client].index[0]
 
-    # Afficher les valeurs SHAP avec Altair
-    st.subheader("Valeurs SHAP pour le client sélectionné")
-    shap.summary_plot(shap_values_client, features=data_by_client, feature_names=feature_names, show=False)
-    shap_plot = st.altair_chart(
-        alt.Chart.shap_summary_plot(
-            shap_values_client, feature_names=feature_names).interactive(),
-              use_container_width=True)
+    # Filtrer la dataframe pour ne conserver que les variables d'importance (feature_importance)
+    prediction_proba, feature_names, feature_importance = ra.get_infos_client(client_data_without_label)
+
+    # Convertir les noms de variables feature_names en majuscules
+    feature_names_upper = [name.upper() for name in feature_names]
+
+    top_10_indices = sorted(range(len(feature_importance)), key=lambda i: feature_importance[i], reverse=True)[:11]
+    top_10_features = [(feature_names_upper[i], feature_importance[i]) for i in top_10_indices]
+
+    # Créer un DataFrame avec les 10 variables les plus importantes
+    top_10_df = pd.DataFrame(top_10_features, columns=['Variables', 'Importance'])
+
+    top_10_df['Variables'] = top_10_df['Variables'].str.lower()
+
+    var_list = top_10_df['Variables'].tolist()
+
+    # Filtrer le DataFrame client_data pour ne conserver que les colonnes d'importance
+    filtered_feature = client_data[var_list]
+
+    # Sélectionner les shap_values pour le client spécifié
+    shap_values_client = shap_values[filtered_feature.index[0]]
+
+    # Créer une dataframe pour les valeurs SHAP
+    shap_df = pd.DataFrame(shap_values_client, columns=filtered_feature)
+
+
+    # Récupérer les index 
+    #filtered_feature_index = filtered_feature.index
+
+    print(shap_df.shape)
+
+    print( )
+
+    
+    print(shap_df)
+
+    
+
+
+
+
+
+    
+
+   
+
 
 
 
