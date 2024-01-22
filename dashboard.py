@@ -8,9 +8,7 @@ from PIL import Image
 
 import request_app as ra
 import pickle
-import shap
 
-import matplotlib.pyplot as plt
 import plotly.express as px
 
 import plotly.graph_objects as go
@@ -280,6 +278,8 @@ if show_predictions:
 
 
     # Afficher d'autres informations sur le client
+    st.title("Aperçu général :")
+
     prediction_proba, feature_names, feature_importance = ra.get_infos_client(client_data_without_label)
     st.write("Les informations ci-dessous représentent la probabilité de prédiction associée au client sélectionné. Cette probabilité est calculée en utilisant" 
              " des caractéristiques spécifiques associées au profil du client. Plus la probabilité est élevée, plus le modèle considère que le client peut présenter "
@@ -295,7 +295,7 @@ if show_predictions:
     values = [prediction_proba[0], prediction_proba[1]]
 
     # Affichage des probabilités sous forme de tableau
-    st.write("Probabilité de Remboursement et Non Remboursement :")
+    
     table_data = {'Classes predictes': classes, 'Probabilités de remboursement': values}
     st.table(table_data)
 
@@ -304,6 +304,8 @@ if show_predictions:
         ################################ Donut Chart   ##############################
 
     # Créer un graphique Donut Chart avec Plotly
+
+    st.title("Donut Chart")
 
     fig = go.Figure(data=[go.Pie(labels=classes, values=values, hole=.4)])
 
@@ -315,6 +317,11 @@ if show_predictions:
     st.write('------------------------------')
 
     ######################## ChartPlot ##############################
+    st.title("ChartPlot")
+
+    st.write("Le graphique permet de discerner rapidement les variations de probabilité entre les différentes classes prédites."
+             " Chaque barre représente une classe spécifique, offrant ainsi une vue détaillée de la distribution des probabilités")
+
     # Graphique ChartPlot
     fig_chartplot = px.bar(x=classes, y=values, labels={'x': 'Classe', 'y': 'Probabilité'},
                         title='ChartPlot des probabilités par classe predicte')
@@ -365,6 +372,12 @@ if show_predictions:
     # Filtrer shap_df pour ne conserver que les données du client sélectionné
     shap_df_selected = shap_df.loc[selected_client_indices]
 
+    st.title("SHAP Values")
+
+    st.write("Ce graphique permet de visualiser comment chaque caractéristique influence la décision"
+             " de crédit pour le client spécifié. Les valeurs SHAP positives ou négatives indiquent l'ampleur"
+             " de l'impact, tandis que les caractéristiques les plus à droite sont les plus influentes.")
+
     # Plot interactif
     c = alt.Chart(shap_df_selected.melt()).mark_bar().encode(
         x=alt.X('variable:N', title='Feature'),
@@ -372,7 +385,7 @@ if show_predictions:
         color=alt.Color('value:Q', scale=alt.Scale(scheme='viridis'), title='SHAP Value'),
         tooltip=['variable:N', 'value:Q']
     ).properties(
-        title=f'SHAP Values pour le Client {selected_client}',
+        title=f'Pour le Client {selected_client}',
         width=600,
         height=400
     )
@@ -396,6 +409,16 @@ if show_predictions:
 
     expected_values_list = [round(value, 3) for value in expected_values_list]
 
+    st.title("Decision Plot Features")
+
+    st.write("Le graphique ci-dessous illustre le 'Decision Plot Features' généré à partir de l'évaluation SHAP pour le client sélectionné")
+    st.write("Ce qu'il faut observer :")
+    st.write("> Les zones où la ligne de la caractéristique traverse la ligne de règle pointillée indiquent des changements significatifs dans la décision.")
+    st.write("> Les segments bleus représentent des caractéristiques qui ont tendance à diminuer la probabilité d'octroi de crédit, tandis que les segments rouges indiquent une influence positive.")
+    st.write("> En analysant les intersections et les pentes de ces lignes, on peut identifier les caractéristiques clés ayant le plus d'impact sur la décision de crédit.")
+
+    st.write(" ")
+
     # Créer le graphique de décision SHAP avec Altair
     decision_chart = alt.layer(
         alt.Chart(shap_df_selected.melt(), title="Decision Plot Features").mark_line(opacity=0.3).encode(
@@ -409,7 +432,7 @@ if show_predictions:
             color=alt.value('red')
         )
     ).properties(
-        title=f'Decision Plot Features pour le Client {selected_client}',
+        title=f'Pour le Client {selected_client}',
         width=600,
         height=400
     )
