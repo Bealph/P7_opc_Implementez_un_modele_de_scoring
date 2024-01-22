@@ -322,17 +322,8 @@ if show_predictions:
 
     st.write('------------------------------')
 
-    ######################## Decision Plot ##############################
-    # Graphique Decision Plot
-    
-    #utiliser les données excepted_value et suivre la meme demarche que celle suivi pour shap
-
-
-
     ######################### SHAP ###########################
 
-    # Récupérer le numéro de ligne dans le numpy array
-    #client_index = client_data[client_data['SK_ID_CURR'] == selected_client].index[0]
 
     # Filtrer la dataframe pour ne conserver que les variables d'importance (feature_importance)
     prediction_proba, feature_names, feature_importance = ra.get_infos_client(client_data_without_label)
@@ -356,19 +347,78 @@ if show_predictions:
     # Sélectionner les shap_values pour le client spécifié
     shap_values_client = shap_values[filtered_feature.index[0]]
 
+    # Sélectionner uniquement les colonnes nécessaires de shap_values_client
+    shap_values_client_subset = shap_values_client[:, :len(var_list)]
+
+    # Sélectionner uniquement les 50 premiers clients dans shap_values_client
+    shap_values_clients_subset = shap_values_client_subset[:50]
+
     # Créer une dataframe pour les valeurs SHAP
-    shap_df = pd.DataFrame(shap_values_client, columns=filtered_feature)
+    shap_df = pd.DataFrame(shap_values_clients_subset, columns=var_list)
+
+    # Récupérer les indices du DataFrame shap_df
+    shap_df_indices = shap_df.index
+
+    # Sélectionner les indices correspondant au client choisi
+    selected_client_indices = client_data[client_data['SK_ID_CURR'] == selected_client].index
+
+    # Filtrer shap_df pour ne conserver que les données du client sélectionné
+    shap_df_selected = shap_df.loc[selected_client_indices]
+
+    # Plot interactif
+    c = alt.Chart(shap_df_selected.melt()).mark_bar().encode(
+        x=alt.X('variable:N', title='Feature'),
+        y=alt.Y('value:Q', title='SHAP Value'),
+        color=alt.Color('value:Q', scale=alt.Scale(scheme='viridis'), title='SHAP Value'),
+        tooltip=['variable:N', 'value:Q']
+    ).properties(
+        title=f'SHAP Values pour le Client {selected_client}',
+        width=600,
+        height=400
+    )
+
+    # Afficher le graphique Altair dans Streamlit
+    st.altair_chart(c)
+
+    st.write('------------------------------')
 
 
-    # Récupérer les index 
-    #filtered_feature_index = filtered_feature.index
-
-    print(shap_df.shape)
-
-    print( )
-
+######################## Decision Plot ##############################
+    # Graphique Decision Plot
     
-    print(shap_df)
+    #utiliser les données excepted_value et suivre la meme demarche que celle suivi pour shap
+
+    val_expected_value = excepted_value
+    print(val_expected_value)
+
+    # Créer une liste contenant la valeur attendue pour chaque client
+    expected_values_list = [val_expected_value] * len(selected_client_indices)
+
+    expected_values_list = [round(value, 3) for value in expected_values_list]
+
+    # Créer le graphique de décision SHAP avec Altair
+    decision_chart = alt.layer(
+        alt.Chart(shap_df_selected.melt(), title="Decision Plot Features").mark_line(opacity=0.3).encode(
+            x='variable:N',
+            y='value:Q',
+            detail='index:N',
+            color=alt.Color('index:O', title=f'Excepted_value : {expected_values_list}')  
+        ),
+        alt.Chart(pd.DataFrame({'expected_value': expected_values_list})).mark_rule(strokeDash=[2, 2]).encode(
+            y='expected_value:Q',
+            color=alt.value('red')
+        )
+    ).properties(
+        title=f'Decision Plot Features pour le Client {selected_client}',
+        width=600,
+        height=400
+    )
+
+    # Afficher le graphique avec st.altair_chart()
+    st.altair_chart(decision_chart)
+
+
+
 
     
 
