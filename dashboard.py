@@ -422,8 +422,8 @@ if show_predictions:
     # Créer le graphique de décision SHAP avec Altair
     decision_chart = alt.layer(
         alt.Chart(shap_df_selected.melt(), title="Decision Plot Features").mark_line(opacity=0.3).encode(
-            x='variable:N',
-            y='value:Q',
+            y='variable:N',
+            x='value:Q',
             detail='index:N',
             color=alt.Color('index:O', title=f'Excepted_value : {expected_values_list}')  
         ),
