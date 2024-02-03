@@ -6,7 +6,7 @@ import numpy as np
 
 from PIL import Image
 
-import request_appl2 as ra
+import request_app as ra
 import pickle
 
 import plotly.express as px
