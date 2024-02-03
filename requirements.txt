@@ -38,7 +38,7 @@ matplotlib==3.8.2
 matplotlib-inline==0.1.6
 mdurl==0.1.2
 nest-asyncio==1.5.8
-numba==0.58.1; python_version >= "3.8" and python_version < "3.12"
+numba==0.53.1
 numpy==1.26.2
 packaging==23.2
 pandas==2.1.4
@@ -58,7 +58,7 @@ pyparsing==3.1.1
 pytest==7.4.4
 python-dateutil==2.8.2
 pytz==2023.3.post1
-pywin32==305
+pywin32==305; sys_platform != 'win32'
 pyzmq==25.1.2
 referencing==0.32.0
 requests==2.31.0
