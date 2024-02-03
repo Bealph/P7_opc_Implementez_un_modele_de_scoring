@@ -12,6 +12,11 @@ with open(chemin_fichier_pickle, 'rb') as fichier:
     print("utilisation du meilleur modele : lightGBM")
     modele = pickle.load(fichier)
 
+
+@app.route('/')
+def hello_world():
+    return 'Hello, World! Welcome to my Flask App.'
+
 # Routes Flask
 @app.route('/api/infos_client/', methods=['POST'])
 def data_client():
